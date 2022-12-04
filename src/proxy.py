@@ -92,8 +92,6 @@ def main():
     # listening
     s.listen(BACKLOG)
 
-    print("A")
-
   except socket.error as e:
     if e.errno != errno.EINTR:
       s.close()
@@ -107,7 +105,6 @@ def main():
 
   # get the connection from client
   while 1:
-    print("B")
     conn, client_addr = s.accept()
 
     queueLock.acquire()

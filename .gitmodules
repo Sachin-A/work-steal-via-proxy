@@ -1,0 +1,3 @@
+[submodule "util/wrk2"]
+	path = util/wrk2
+	url = https://github.com/giltene/wrk2.git
