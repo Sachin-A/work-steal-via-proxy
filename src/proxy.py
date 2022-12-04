@@ -138,7 +138,7 @@ def main():
     print(type(conn), type(client_addr))
     print("Connection no:", x)
     queueLock.acquire()
-    q.put(conn, client_addr)
+    q.put((conn, client_addr))
     printCustom("Queue size:", q.qsize())
     queueLock.release()
     x = x + 1
