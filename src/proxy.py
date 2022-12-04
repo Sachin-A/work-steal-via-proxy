@@ -11,10 +11,8 @@ DEBUG = True            # set to True to see the debug msgs
 def handle_request(q, queueLock):
   
   while(1):
-    time.sleep(5)
     flag = False
     queueLock.acquire()
-    print(q.qsize())
     if (q.qsize() > 0):
       conn, client_addr = q.get()
       if conn:
@@ -32,12 +30,42 @@ def handle_request(q, queueLock):
       # get url
       #url = first_line.split(' ')[1]
 
+      # set webserver hostname and port
+      webserver = ""
+      port = 3000
+
       if (DEBUG):
         print(request)
         #print(first_line)
         #print("URL:", url)
 
-      conn.close()
+      print("Connect to:", webserver, port)
+
+      try:
+        # create a socket to connect to the web server
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((webserver, port))
+        s.send(request)         # send request to webserver
+
+        while 1:
+          # receive data from web server
+          data = s.recv(MAX_DATA_RECV)
+
+          if (len(data) > 0):
+            # send to browser
+            conn.send(data)
+          else:
+            break
+        s.close()
+        conn.close()
+
+      except socket.error as e:
+        if s:
+          s.close()
+        if conn:
+          conn.close()
+        print("Could not open socket")
+        sys.exit(1)
 
 #********* MAIN PROGRAM ***************
 def main():
@@ -49,7 +77,7 @@ def main():
     #exit(1)
 
   # host and port info.
-  host = ''               # blank for localhost
+  host = ""               # blank for localhost
   port = int(sys.argv[1]) # port from argument
 
   print(port)
