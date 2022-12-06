@@ -185,7 +185,7 @@ def send_back_to_original_proxy(conn_obj_addr_, orig_proxy_id, proxy_port, host)
       break
   sock.close()
 
-def handle_request(proxy_id, proxy_port, host):
+def handle_request(proxy_id, proxy_port, host, ws_toggle):
   process_count = 1
   while True:
     flag = False
@@ -204,15 +204,15 @@ def handle_request(proxy_id, proxy_port, host):
         conn_.send(flask_response.encode())
         conn_.close()
         process_count += 1
-      else:
+      elif ws_toggle:
         print("WHY")
         process_request(req_type, process_count)
         send_back_to_original_proxy(conn_obj_addr_, orig_proxy_id, proxy_port, host)
 
 def main():
 
-  if (len(sys.argv) < 5):
-    print("usage: proxy <proxy-id> <ip> <port> <proxy-port> <debug-bool>")
+  if (len(sys.argv) < 6):
+    print("usage: proxy <proxy-id> <ip> <port> <proxy-port> <debug-bool> <work steal>")
     print("Closing proxy")
     exit(1)
 
@@ -223,7 +223,13 @@ def main():
 
   global DEBUG
   DEBUG = int(sys.argv[5])
-
+  ws_toggle = int(sys.argv[6])
+  
+  if ws_toggle:
+    print("Work stealing is ON.")
+  else:
+    print("Work stealing is OFF.")
+    
   print("Main thread: Proxy ID " + str(proxy_id) + " Host " + host + " Port " + str(port))
   print("Main thread: Initializing ...")
 
@@ -243,14 +249,17 @@ def main():
     print("Main thread error: Closing proxy")
     sys.exit(1)
 
-  process_thread = threading.Thread(target = handle_request, args = (proxy_id, proxy_port, host))
+  process_thread = threading.Thread(target = handle_request, args = (proxy_id, proxy_port, host, ws_toggle))
   work_stealer_client_thread = threading.Thread(target = send_work, args = (proxy_id, proxy_port, host))
   work_stealer_server_thread = threading.Thread(target = receive_work, args = (proxy_id, proxy_port, host))
   completed_work_receiver_thread = threading.Thread(target = receive_back_as_original_proxy, args = (proxy_id, proxy_port, host))
+  
+  
   process_thread.start()
-  work_stealer_client_thread.start()
-  work_stealer_server_thread.start()
-  completed_work_receiver_thread.start()
+  if ws_toggle:
+    work_stealer_client_thread.start()
+    work_stealer_server_thread.start()
+    completed_work_receiver_thread.start()
 
   conn_count = 1
   while True:
@@ -280,9 +289,10 @@ def main():
   print("Main thread: Closed socket from client to proxy")
 
   process_thread.join()
-  work_stealer_client_thread.join()
-  work_stealer_server_thread.join()
-  completed_work_receiver_thread.join()
+  if ws_toggle:
+    work_stealer_client_thread.join()
+    work_stealer_server_thread.join()
+    completed_work_receiver_thread.join()
 
 if __name__ == '__main__':
   main()
