@@ -211,7 +211,7 @@ def handle_request(proxy_id, proxy_port, host, ws_toggle):
 
 def main():
 
-  if (len(sys.argv) < 6):
+  if (len(sys.argv) < 7):
     print("usage: proxy <proxy-id> <ip> <port> <proxy-port> <debug-bool> <work steal>")
     print("Closing proxy")
     exit(1)
