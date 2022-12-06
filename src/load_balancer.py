@@ -1,5 +1,7 @@
+import random
 import queue
 import threading
+import numpy as np
 import os, sys, time, socket
 
 #********* CONSTANT VARIABLES *********
@@ -7,12 +9,44 @@ BACKLOG = 50            # how many pending connections queue will hold
 MAX_DATA_RECV = 4096    # max number of bytes we receive at once
 DEBUG = False           # set to True to see the debug msgs
 
-def load_balancer(scheme):
-    ip = ""
-    port = 2000
-    return ip, port
+ports = [2000, 2001]
+total_requests = 0
+per_proxy = [0, 0]
+port_dict = {2000: 0, 2001: 1}
 
-def proxy_thread(conn, client_addr):
+def load_balancer(scheme):
+  global per_proxy
+  global port_dict
+
+  if scheme == 1:
+    ip = ""
+    port = random.choice(ports)
+    per_proxy[port_dict[port]] += 1
+    print(port)
+
+  elif scheme == 2:
+    ip = ""
+    port = ports[((total_requests + 1) % 2)]
+    per_proxy[port_dict[port]] += 1
+    print(port)
+
+  elif scheme == 3:
+    ip = ""
+    print(per_proxy)
+    index_min = np.argmin(per_proxy)
+    if hasattr(index_min, '__len__') and (not isinstance(index_min, str)):
+      port = ports[index_min[0]]
+    else:
+      port = ports[index_min]
+    per_proxy[port_dict[port]] += 1
+    print(port)
+
+  return ip, port
+
+def proxy_thread(conn, client_addr, webserver, port):
+
+  global per_proxy
+  global port_dict
 
   request = conn.recv(MAX_DATA_RECV)
 
@@ -21,7 +55,6 @@ def proxy_thread(conn, client_addr):
     conn.close()
     return
 
-  webserver, port = load_balancer(0)
   print("Connect to: ", webserver, port)
 
   try:
@@ -38,6 +71,7 @@ def proxy_thread(conn, client_addr):
         break
     s.close()
     conn.close()
+    per_proxy[port_dict[port]] -= 1
 
   except socket.error as e:
     if s:
@@ -56,6 +90,7 @@ def main():
 
   host = ""
   port = int(sys.argv[1])
+  scheme = int(sys.argv[2])
 
   try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -74,7 +109,10 @@ def main():
 
   while 1:
     conn, client_addr = s.accept()
-    handler_thread = threading.Thread(target = proxy_thread, args = (conn, client_addr))
+    global total_requests
+    total_requests += 1
+    webserver, port = load_balancer(scheme)
+    handler_thread = threading.Thread(target = proxy_thread, args = (conn, client_addr, webserver, port))
     handler_thread.start()
 
   s.close()
