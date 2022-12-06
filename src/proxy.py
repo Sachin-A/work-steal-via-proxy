@@ -17,6 +17,7 @@ flask_response = "HTTP/1.1 200 OK\r\nServer: Werkzeug/2.2.2 Python/3.8.10\r\nDat
 requests_list = list()
 queue = list()
 conn_dict = dict()
+steal_count = 0
 
 def print_c(*args):
   global DEBUG
@@ -26,17 +27,17 @@ def print_c(*args):
 def process_request(req_type, x):
   print("Processing: ", x)
   if req_type == "LONG":
-    time.sleep(0.003)
+    time.sleep(0.080)
   elif req_type == "MEDIUM":
-    time.sleep(0.002)
+    time.sleep(0.020)
   elif req_type == "SHORT":
-    time.sleep(0.001)
+    time.sleep(0.005)
   else:
     print("Not supported req_type: ", req_type)
     exit(1)
 
 def is_overloaded():
-  if len(queue) > 100000:
+  if len(queue) > 5:
     print("I am overloaded!")
     return True
   else:
@@ -74,6 +75,8 @@ def send_work(proxy_id, proxy_port, host):
       data = str(last_request[0]) + "#" + str(last_request[1])
       print("Work steal message: ", data)
       sock.send(data.encode())
+      global steal_count
+      steal_count += 1
       while True:
         response = sock.recv(MAX_DATA_RECV)
         if (len(response) > 0):
@@ -199,13 +202,12 @@ def handle_request(proxy_id, proxy_port, host, ws_toggle):
 
     if flag:
       if int(orig_proxy_id) == proxy_id:
-        conn_ = conn_dict[conn_obj_addr_]
+        conn_ = conn_dict[int(conn_obj_addr_)]
         process_request(req_type, process_count)
         conn_.send(flask_response.encode())
         conn_.close()
         process_count += 1
       elif ws_toggle:
-        print("WHY")
         process_request(req_type, process_count)
         send_back_to_original_proxy(conn_obj_addr_, orig_proxy_id, proxy_port, host)
 
@@ -224,12 +226,12 @@ def main():
   global DEBUG
   DEBUG = int(sys.argv[5])
   ws_toggle = int(sys.argv[6])
-  
+
   if ws_toggle:
     print("Work stealing is ON.")
   else:
     print("Work stealing is OFF.")
-    
+
   print("Main thread: Proxy ID " + str(proxy_id) + " Host " + host + " Port " + str(port))
   print("Main thread: Initializing ...")
 
@@ -253,8 +255,8 @@ def main():
   work_stealer_client_thread = threading.Thread(target = send_work, args = (proxy_id, proxy_port, host))
   work_stealer_server_thread = threading.Thread(target = receive_work, args = (proxy_id, proxy_port, host))
   completed_work_receiver_thread = threading.Thread(target = receive_back_as_original_proxy, args = (proxy_id, proxy_port, host))
-  
-  
+
+
   process_thread.start()
   if ws_toggle:
     work_stealer_client_thread.start()
@@ -284,6 +286,7 @@ def main():
     conn_count += 1
     print("Main thread: Connection no ", conn_count)
     print("Main thread: Queue size ", len(queue))
+    print("Main thread: Steal count ", str(steal_count))
 
   sock.close()
   print("Main thread: Closed socket from client to proxy")
