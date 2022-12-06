@@ -2,6 +2,7 @@ import queue
 import threading
 import os, sys, time, socket
 import numpy as np
+import random
 
 BACKLOG = 50
 MAX_DATA_RECV = 4096
@@ -17,6 +18,7 @@ requests_list = list()
 queue = list()
 conn_dict = dict()
 steal_count = 0
+req_type_dict = {0: "LONG", 1: "MEDIUM", 2: "SHORT"}
 mean_processing_time = {"LONG":3, "MEDIUM":2, "SHORT":1}
 queue_states = dict()
 first_wrk_request = False
@@ -382,7 +384,8 @@ def main():
     # print("Number of requests: ", len(requests_list))
 
     conn_dict[conn_obj_addr] = conn
-    msg = "LONG#" + str(proxy_id)
+    req_type = req_type_dict[random.randint(0, 2)]
+    msg = req_type + "#" + str(proxy_id)
     print("Queuing message: " + msg)
 
     queue.append((conn_obj_addr, msg))
