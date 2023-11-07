@@ -77,6 +77,7 @@ def send_work(proxy_id, proxy_port, host):
           flag = False
 
       data = str(last_request[0]) + "#" + str(last_request[1])
+      
       print("Work steal message: ", data)
       sock.send(data.encode())
       global steal_count
